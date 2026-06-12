@@ -12,13 +12,22 @@ const map = L.map("map", {
 });
 
 L.tileLayer(
-  "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}",
   {
     attribution:
-      '&copy; <a href="https://carto.com/">CARTO</a> | ' +
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; ' +
+      'Source: US National Park Service | ' +
+      '&copy; <a href="https://carto.com/">CARTO</a>',
+    maxZoom: 8,
+  }
+).addTo(map);
+
+// Labels-only overlay (transparent bg, dark text) — state, district & city names in black
+L.tileLayer(
+  "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
+  {
     subdomains: "abcd",
-    maxZoom: 19,
+    maxZoom:    19,
   }
 ).addTo(map);
 
@@ -78,8 +87,8 @@ function makePlaneIcon(heading, onGround, selected = false) {
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg"
        width="${size}" height="${size}" viewBox="0 0 32 32"
-       style="transform:rotate(${heading}deg);display:block;">
-    <path fill="${fill}" stroke="rgba(0,0,0,0.55)" stroke-width="1.5"
+       style="transform:rotate(${heading}deg);display:block;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.65));">
+    <path fill="${fill}" stroke="rgba(0,0,0,0.75)" stroke-width="1.5"
           stroke-linejoin="round" stroke-linecap="round"
           d="M16 2 L18 7 L18 12 L30 20 L29 22 L19 16
       L20 22 L25 27 L23 29 L18 25 L17 30 L15 30
@@ -261,25 +270,25 @@ setInterval(() => {
 /* ── State GeoJSON layer ──────────────────────────────────────────────── */
 
 const STATE_STYLE_DEFAULT = {
-  color:       "#3a3f4b",
+  color:       "#5c4a2a",
   weight:      1,
-  opacity:     0.6,
-  fillColor:   "#ffffff",
-  fillOpacity: 0.02,
+  opacity:     0.5,
+  fillColor:   "#5c4a2a",
+  fillOpacity: 0.01,
 };
 
 const STATE_STYLE_HOVER = {
-  color:   "#F5F0E8",
-  weight:  3,
-  opacity: 1,
+  color:   "#ffffff",
+  weight:  2.5,
+  opacity: 0.85,
 };
 
 const STATE_STYLE_SELECTED = {
-  color:       "#F5F0E8",
-  weight:      3,
+  color:       "#ffffff",
+  weight:      2.5,
   opacity:     1,
-  fillColor:   "#F5F0E8",
-  fillOpacity: 0.06,
+  fillColor:   "#ffffff",
+  fillOpacity: 0.08,
 };
 
 /**
