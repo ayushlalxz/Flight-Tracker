@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flight {{ icao24 }} — India Flight Tracker</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Shared dark theme -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <!-- Detail page layout -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/flight.css') }}" />
+</head>
+<body>
+
+  <div class="flight-layout">
+
+    <!-- MAP -->
+    <div class="flight-map-wrap">
+      <div id="flight-map"></div>
+    </div>
+
+    <!-- DETAIL PANEL -->
+    <aside class="flight-panel">
+
+      <header class="flight-panel__header">
+        <a href="/" class="btn btn--state-back flight-panel__back">&#8592; Back</a>
+        <div class="flight-panel__title">
+          <span id="fp-callsign" class="flight-panel__callsign">—</span>
+          <span id="fp-icao24"   class="flight-panel__icao">{{ icao24 }}</span>
+        </div>
+      </header>
+
+      <div id="fp-status" class="source-badge source-badge--idle">Loading…</div>
+
+      <!-- Route: origin → destination -->
+      <section class="fp-airports">
+        <div class="fp-airport">
+          <span class="fp-airport__dot fp-airport__dot--origin"></span>
+          <div class="fp-airport__info">
+            <span class="fp-airport__label">Origin</span>
+            <span id="fp-origin-name" class="fp-airport__name">—</span>
+            <span id="fp-origin-icao" class="fp-airport__icao">—</span>
+          </div>
+        </div>
+        <span class="fp-route-arrow" aria-hidden="true">&#8594;</span>
+        <div class="fp-airport">
+          <span class="fp-airport__dot fp-airport__dot--dest"></span>
+          <div class="fp-airport__info">
+            <span class="fp-airport__label">Destination</span>
+            <span id="fp-dest-name" class="fp-airport__name">—</span>
+            <span id="fp-dest-icao" class="fp-airport__icao">—</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Telemetry -->
+      <section class="fp-telemetry">
+        <div class="fp-telem-row">
+          <span class="fp-telem-label">Altitude</span>
+          <span id="fp-altitude" class="fp-telem-value">—</span>
+          <span class="fp-telem-unit">ft</span>
+        </div>
+        <div class="fp-telem-row">
+          <span class="fp-telem-label">Speed</span>
+          <span id="fp-speed" class="fp-telem-value">—</span>
+          <span class="fp-telem-unit">km/h</span>
+        </div>
+        <div class="fp-telem-row">
+          <span class="fp-telem-label">Heading</span>
+          <span id="fp-heading" class="fp-telem-value">—</span>
+          <span class="fp-telem-unit">deg</span>
+        </div>
+        <div class="fp-telem-row">
+          <span class="fp-telem-label">Country</span>
+          <span id="fp-country" class="fp-telem-value fp-telem-value--sm">—</span>
+        </div>
+        <div class="fp-telem-row fp-telem-row--full">
+          <span class="fp-telem-label">Last seen</span>
+          <span id="fp-timestamp" class="fp-telem-value fp-telem-value--sm">—</span>
+        </div>
+      </section>
+
+      <!-- Auto-refresh footer -->
+      <div class="fp-refresh-bar">
+        <span class="fp-refresh-label">
+          Auto-refresh in <strong id="fp-countdown">10</strong>s
+        </span>
+      </div>
+
+    </aside>
+  </div>
+
+  <!-- Pass ICAO24 from Flask to JS -->
+  <script>
+    const FLIGHT_ICAO24 = {{ icao24 | tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='js/flight.js') }}"></script>
+
+</body>
+</html>

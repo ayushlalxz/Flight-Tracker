@@ -1,0 +1,263 @@
+/* flight.css — Per-aircraft detail page layout.
+   Loads after style.css; reuses all :root design tokens from that file.
+*/
+
+/* ── Page layout ─────────────────────────────────────────────────────────── */
+.flight-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.flight-map-wrap {
+  flex: 1 1 auto;
+  position: relative;
+  min-width: 0;
+}
+
+#flight-map {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Detail panel ────────────────────────────────────────────────────────── */
+.flight-panel {
+  flex: 0 0 var(--sidebar-width);
+  width: var(--sidebar-width);
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Header */
+.flight-panel__header {
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+
+.flight-panel__back {
+  align-self: flex-start;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.flight-panel__title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.flight-panel__callsign {
+  font-family: var(--font-data);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-accent);
+  letter-spacing: .06em;
+}
+
+.flight-panel__icao {
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+/* Status badge inside panel */
+#fp-status {
+  margin: var(--sp-3) var(--sp-4) 0;
+  align-self: flex-start;
+  flex-shrink: 0;
+}
+
+/* ── Airport row ─────────────────────────────────────────────────────────── */
+.fp-airports {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.fp-airport {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.fp-airport__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.fp-airport__dot--origin {
+  background: #39d353;
+  box-shadow: 0 0 6px rgba(57,211,83,.5);
+}
+
+.fp-airport__dot--dest {
+  background: #f85149;
+  box-shadow: 0 0 6px rgba(248,81,73,.5);
+}
+
+.fp-airport__info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.fp-airport__label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.fp-airport__name {
+  font-size: 11px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fp-airport__icao {
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  letter-spacing: .06em;
+}
+
+.fp-route-arrow {
+  color: var(--color-text-dim);
+  font-size: 16px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* ── Telemetry ───────────────────────────────────────────────────────────── */
+.fp-telemetry {
+  padding: var(--sp-4);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+}
+
+.fp-telem-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.fp-telem-row--full {
+  grid-template-columns: 1fr 1fr;
+}
+
+.fp-telem-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.fp-telem-value {
+  font-family: var(--font-data);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-accent);
+  text-align: right;
+}
+
+.fp-telem-value--sm {
+  font-size: 13px;
+}
+
+.fp-telem-unit {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* ── Refresh bar ─────────────────────────────────────────────────────────── */
+.fp-refresh-bar {
+  margin-top: auto;
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.fp-refresh-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.fp-refresh-label strong {
+  color: var(--color-text);
+}
+
+/* ── Map marker styles ───────────────────────────────────────────────────── */
+.plane-marker--current svg {
+  filter: none;
+  animation: none;
+}
+
+.airport-marker {
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+.airport-marker--origin {
+  background: #39d353;
+  border-color: rgba(57,211,83,.4);
+  box-shadow: 0 0 8px rgba(57,211,83,.6);
+}
+
+.airport-marker--dest {
+  background: #f85149;
+  border-color: rgba(248,81,73,.4);
+  box-shadow: 0 0 8px rgba(248,81,73,.6);
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .flight-layout {
+    flex-direction: column;
+  }
+
+  .flight-map-wrap {
+    flex: 0 0 50vh;
+    height: 50vh;
+  }
+
+  .flight-panel {
+    flex: 1 1 auto;
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .fp-telem-value  { font-size: 16px; }
+  .flight-panel__callsign { font-size: 18px; }
+}

@@ -363,8 +363,7 @@ html, body {
 }
 
 .plane-marker svg {
-  filter: drop-shadow(0 0 3px rgba(88,166,255,.6));
-  transition: filter .2s;
+  filter: none;
 }
 
 /* ── State polygon layer ───────────────────────────────────────────────── */
@@ -404,6 +403,318 @@ html, body {
 .btn--state-back:hover {
   background: rgba(245,240,232,.1);
   border-color: #F5F0E8;
+}
+
+/* ── Search overlay ────────────────────────────────────────────────────── */
+.search-wrap {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: min(420px, calc(100vw - 48px));
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.search-box {
+  pointer-events: all;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(22,27,34,.92);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+  transition: border-color .15s;
+}
+
+.search-box:focus-within {
+  border-color: var(--color-accent);
+}
+
+.search-box__icon {
+  color: var(--color-text-muted);
+  transform: rotate(-45deg);
+  flex-shrink: 0;
+}
+
+.search-box__input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.search-box__input::placeholder { color: var(--color-text-dim); }
+.search-box__input::-webkit-search-cancel-button { display: none; }
+
+.search-dropdown {
+  pointer-events: all;
+  list-style: none;
+  background: rgba(22,27,34,.96);
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  max-height: 320px;
+  overflow-y: auto;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.6);
+}
+
+.search-dropdown__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background .1s;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.search-dropdown__item:last-child { border-bottom: none; }
+
+.search-dropdown__item:hover,
+.search-dropdown__item--active {
+  background: var(--color-accent-dim);
+}
+
+.search-dropdown__callsign {
+  font-family: var(--font-data);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.search-dropdown__meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-family: var(--font-data);
+}
+
+/* ── Sidebar view containers ───────────────────────────────────────────── */
+#sidebar-overview {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Flight detail panel (in-sidebar) ──────────────────────────────────── */
+.sidebar-flight-detail {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+.fdp-header {
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+}
+
+.fdp-close-btn {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 3px 8px;
+}
+
+.fdp-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fdp-callsign {
+  font-family: var(--font-data);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-accent);
+  letter-spacing: .06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fdp-icao24-badge {
+  font-family: var(--font-data);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+#fdp-status {
+  margin: var(--sp-3) var(--sp-4) 0;
+  align-self: flex-start;
+  flex-shrink: 0;
+}
+
+.fdp-airports {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.fdp-airport {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.fdp-airport__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.fdp-airport__dot--origin {
+  background: #39d353;
+  box-shadow: 0 0 6px rgba(57,211,83,.5);
+}
+
+.fdp-airport__dot--dest {
+  background: #f85149;
+  box-shadow: 0 0 6px rgba(248,81,73,.5);
+}
+
+.fdp-airport__info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.fdp-airport__label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.fdp-airport__name {
+  font-size: 11px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fdp-airport__icao {
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  letter-spacing: .06em;
+}
+
+.fdp-route-arrow {
+  color: var(--color-text-dim);
+  font-size: 16px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.fdp-telemetry {
+  padding: var(--sp-4);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+}
+
+.fdp-telem-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.fdp-telem-row--full {
+  grid-template-columns: 1fr 1fr;
+}
+
+.fdp-telem-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.fdp-telem-value {
+  font-family: var(--font-data);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-accent);
+  text-align: right;
+}
+
+.fdp-telem-value--sm {
+  font-size: 12px;
+}
+
+.fdp-telem-unit {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.fdp-refresh-bar {
+  margin-top: auto;
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.fdp-refresh-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.fdp-refresh-label strong {
+  color: var(--color-text);
+}
+
+/* ── Airport map markers (used by FDP on main map) ──────────────────────── */
+.airport-marker {
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+.airport-marker--origin {
+  background: #39d353;
+  border-color: rgba(57,211,83,.4);
+  box-shadow: 0 0 8px rgba(57,211,83,.6);
+}
+
+.airport-marker--dest {
+  background: #f85149;
+  border-color: rgba(248,81,73,.4);
+  box-shadow: 0 0 8px rgba(248,81,73,.6);
 }
 
 /* ── Mobile responsive ─────────────────────────────────────────────────── */

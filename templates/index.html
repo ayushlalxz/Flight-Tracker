@@ -20,12 +20,32 @@
     <!-- MAP (left / top on mobile) -->
     <div class="map-wrap">
       <div id="map"></div>
+
+      <!-- Search overlay — centred at top of map -->
+      <div id="search-wrap" class="search-wrap">
+        <div class="search-box" role="search" aria-label="Search flights">
+          <span class="search-box__icon" aria-hidden="true">✈</span>
+          <input
+            id="search-input"
+            class="search-box__input"
+            type="search"
+            placeholder="Search callsign or ICAO24…"
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+            aria-autocomplete="list"
+            aria-controls="search-dropdown"
+            aria-expanded="false"
+          />
+        </div>
+        <ul id="search-dropdown" class="search-dropdown" role="listbox" aria-label="Flight results" hidden></ul>
+      </div>
     </div>
 
     <!-- SIDEBAR (right / bottom on mobile) -->
     <aside class="sidebar">
 
-      <!-- Header -->
+      <!-- Header — always visible -->
       <header class="sidebar__header">
         <div class="sidebar__title">
           <span class="sidebar__icon">✈</span>
@@ -37,59 +57,134 @@
       <!-- Region label (hidden when no state selected) -->
       <div id="region-label" class="region-label" aria-live="polite"></div>
 
-      <!-- Stat cards -->
-      <section class="stats-grid" aria-label="Statistics">
-        <div class="stat-card">
-          <span class="stat-card__label">Active Flights</span>
-          <span class="stat-card__value" id="stat-active">—</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-card__label">Avg Altitude</span>
-          <span class="stat-card__value" id="stat-altitude">—</span>
-          <span class="stat-card__unit">ft</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-card__label">Avg Speed</span>
-          <span class="stat-card__value" id="stat-speed">—</span>
-          <span class="stat-card__unit">km/h</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-card__label">Top Country</span>
-          <span class="stat-card__value stat-card__value--sm" id="stat-country">—</span>
-        </div>
-      </section>
+      <!-- ── Overview panel (default) ──────────────────────────────── -->
+      <div id="sidebar-overview">
 
-      <!-- Refresh controls -->
-      <div class="refresh-bar">
-        <button id="btn-refresh" class="btn btn--primary" onclick="manualRefresh()">
-          ↻ Refresh Now
-        </button>
-        <button id="btn-toggle" class="btn btn--ghost" onclick="toggleAutoRefresh()">
-          ⏸ Pause
-        </button>
-        <button id="btn-back" class="btn btn--state-back" onclick="deselectState()" hidden>
-          ← India
-        </button>
-        <span class="refresh-bar__countdown">
-          Next in <strong id="countdown">{{ refresh }}</strong>s
-        </span>
-      </div>
+        <!-- Stat cards -->
+        <section class="stats-grid" aria-label="Statistics">
+          <div class="stat-card">
+            <span class="stat-card__label">Active Flights</span>
+            <span class="stat-card__value" id="stat-active">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card__label">Avg Altitude</span>
+            <span class="stat-card__value" id="stat-altitude">—</span>
+            <span class="stat-card__unit">ft</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card__label">Avg Speed</span>
+            <span class="stat-card__value" id="stat-speed">—</span>
+            <span class="stat-card__unit">km/h</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card__label">Top Country</span>
+            <span class="stat-card__value stat-card__value--sm" id="stat-country">—</span>
+          </div>
+        </section>
 
-      <!-- Status badge -->
-      <div id="data-source" class="source-badge source-badge--idle">Initialising…</div>
-
-      <!-- Flight list -->
-      <div class="flight-list-wrap">
-        <div class="flight-list__header">
-          <span>Callsign</span>
-          <span>Country</span>
-          <span>Alt (ft)</span>
-          <span>Spd (km/h)</span>
+        <!-- Refresh controls -->
+        <div class="refresh-bar">
+          <button id="btn-refresh" class="btn btn--primary" onclick="manualRefresh()">
+            ↻ Refresh Now
+          </button>
+          <button id="btn-toggle" class="btn btn--ghost" onclick="toggleAutoRefresh()">
+            ⏸ Pause
+          </button>
+          <button id="btn-back" class="btn btn--state-back" onclick="deselectState()" hidden>
+            ← India
+          </button>
+          <span class="refresh-bar__countdown">
+            Next in <strong id="countdown">{{ refresh }}</strong>s
+          </span>
         </div>
-        <ul id="flight-list" class="flight-list" role="list">
-          <li class="flight-list__empty">Loading flights…</li>
-        </ul>
-      </div>
+
+        <!-- Status badge -->
+        <div id="data-source" class="source-badge source-badge--idle">Initialising…</div>
+
+        <!-- Flight list -->
+        <div class="flight-list-wrap">
+          <div class="flight-list__header">
+            <span>Callsign</span>
+            <span>Country</span>
+            <span>Alt (ft)</span>
+            <span>Spd (km/h)</span>
+          </div>
+          <ul id="flight-list" class="flight-list" role="list">
+            <li class="flight-list__empty">Loading flights…</li>
+          </ul>
+        </div>
+
+      </div><!-- /#sidebar-overview -->
+
+      <!-- ── Flight detail panel (shown on plane selection) ────────── -->
+      <div id="sidebar-flight-detail" class="sidebar-flight-detail" hidden>
+
+        <div class="fdp-header">
+          <button class="btn btn--ghost fdp-close-btn" onclick="closeFlightDetail()">✕ Close</button>
+          <div class="fdp-title">
+            <span id="fdp-callsign" class="fdp-callsign">—</span>
+            <span id="fdp-icao24"   class="fdp-icao24-badge">—</span>
+          </div>
+        </div>
+
+        <div id="fdp-status" class="source-badge source-badge--idle">Loading…</div>
+
+        <!-- Route: origin → destination -->
+        <section class="fdp-airports">
+          <div class="fdp-airport">
+            <span class="fdp-airport__dot fdp-airport__dot--origin"></span>
+            <div class="fdp-airport__info">
+              <span class="fdp-airport__label">Origin</span>
+              <span id="fdp-origin-name" class="fdp-airport__name">—</span>
+              <span id="fdp-origin-icao" class="fdp-airport__icao">—</span>
+            </div>
+          </div>
+          <span class="fdp-route-arrow" aria-hidden="true">&#8594;</span>
+          <div class="fdp-airport">
+            <span class="fdp-airport__dot fdp-airport__dot--dest"></span>
+            <div class="fdp-airport__info">
+              <span class="fdp-airport__label">Destination</span>
+              <span id="fdp-dest-name" class="fdp-airport__name">—</span>
+              <span id="fdp-dest-icao" class="fdp-airport__icao">—</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Telemetry -->
+        <section class="fdp-telemetry">
+          <div class="fdp-telem-row">
+            <span class="fdp-telem-label">Altitude</span>
+            <span id="fdp-altitude" class="fdp-telem-value">—</span>
+            <span class="fdp-telem-unit">ft</span>
+          </div>
+          <div class="fdp-telem-row">
+            <span class="fdp-telem-label">Speed</span>
+            <span id="fdp-speed" class="fdp-telem-value">—</span>
+            <span class="fdp-telem-unit">km/h</span>
+          </div>
+          <div class="fdp-telem-row">
+            <span class="fdp-telem-label">Heading</span>
+            <span id="fdp-heading" class="fdp-telem-value">—</span>
+            <span class="fdp-telem-unit">deg</span>
+          </div>
+          <div class="fdp-telem-row">
+            <span class="fdp-telem-label">Country</span>
+            <span id="fdp-country" class="fdp-telem-value fdp-telem-value--sm">—</span>
+          </div>
+          <div class="fdp-telem-row fdp-telem-row--full">
+            <span class="fdp-telem-label">Last seen</span>
+            <span id="fdp-timestamp" class="fdp-telem-value fdp-telem-value--sm">—</span>
+          </div>
+        </section>
+
+        <!-- Auto-refresh footer -->
+        <div class="fdp-refresh-bar">
+          <span class="fdp-refresh-label">
+            Auto-refresh in <strong id="fdp-countdown">10</strong>s
+          </span>
+        </div>
+
+      </div><!-- /#sidebar-flight-detail -->
 
     </aside>
   </div>
@@ -101,6 +196,7 @@
   </script>
   <script src="{{ url_for('static', filename='js/map.js') }}"></script>
   <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 
 </body>
 </html>

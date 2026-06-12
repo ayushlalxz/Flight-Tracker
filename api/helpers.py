@@ -73,6 +73,32 @@ def fetch_last_snapshot() -> list[dict]:
         conn.close()
 
 
+def fetch_flight_by_icao24(icao24: str) -> dict | None:
+    """Return the single most-recent DB row for the given ICAO24, or None."""
+    sql = """
+        SELECT icao24, callsign, origin_country, longitude, latitude,
+               altitude_m, velocity_ms, heading, on_ground, fetched_at
+        FROM flights
+        WHERE icao24 = %s
+        ORDER BY fetched_at DESC
+        LIMIT 1
+    """
+    try:
+        conn   = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(sql, (icao24.lower(),))
+        row = cursor.fetchone()
+        if row and isinstance(row.get("fetched_at"), datetime):
+            row["fetched_at"] = row["fetched_at"].isoformat()
+        return row
+    except mysql.connector.Error as exc:
+        logger.error("DB fetch_flight_by_icao24 error: %s", exc)
+        return None
+    finally:
+        cursor.close()
+        conn.close()
+
+
 # ── OpenSky ─────────────────────────────────────────────────────────────────
 
 _COL = {

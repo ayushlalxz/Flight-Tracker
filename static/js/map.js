@@ -64,24 +64,31 @@ function nameToSlug(name) {
 
 
 /* ── SVG plane icon ───────────────────────────────────────────────────── */
-function makePlaneIcon(heading, onGround) {
-  const color = onGround ? "#f0883e" : "#58a6ff";
-  const size  = onGround ? 14 : 18;
+const PLANE_COLOURS = {
+  selected: { fill: "#ff8c00", size: 32, cls: "plane-marker--selected" },
+  airborne: { fill: "#f5c518", size: 28, cls: ""                       },
+  ground:   { fill: "#9e9e9e", size: 16, cls: "plane-marker--ground"   },
+};
 
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg"
-         width="${size}" height="${size}"
-         viewBox="0 0 24 24"
-         style="transform:rotate(${heading}deg);display:block;">
-      <path fill="${color}"
-        d="M12 2
-           L8  20 L12 17 L16 20 Z
-           M10 10 L4 14 L5 12 L10 8 Z
-           M14 10 L20 14 L19 12 L14 8 Z"/>
-    </svg>`;
+function makePlaneIcon(heading, onGround, selected = false) {
+  const theme = selected ? PLANE_COLOURS.selected
+              : onGround ? PLANE_COLOURS.ground
+              :             PLANE_COLOURS.airborne;
+  const { fill, size, cls } = theme;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"
+       width="${size}" height="${size}" viewBox="0 0 32 32"
+       style="transform:rotate(${heading}deg);display:block;">
+    <path fill="${fill}" stroke="rgba(0,0,0,0.55)" stroke-width="1.5"
+          stroke-linejoin="round" stroke-linecap="round"
+          d="M16 2 L18 7 L18 12 L30 20 L29 22 L19 16
+      L20 22 L25 27 L23 29 L18 25 L17 30 L15 30
+      L14 25 L9 29 L7 27 L12 22 L13 16 L3 22 L2 20
+      L14 12 L14 7 Z"/>
+  </svg>`;
 
   return L.divIcon({
-    html: `<div class="plane-marker">${svg}</div>`,
+    html:       `<div class="plane-marker ${cls}">${svg}</div>`,
     iconSize:   [size, size],
     iconAnchor: [size / 2, size / 2],
     className:  "",
@@ -121,10 +128,10 @@ function renderFlights(flights) {
   flights.forEach(f => {
     if (f.latitude == null || f.longitude == null) return;
 
-    const icon   = makePlaneIcon(f.heading || 0, f.on_ground);
+    const icon   = makePlaneIcon(f.heading || 0, f.on_ground, f.icao24 === fdpSelectedIcao24);
     const marker = L.marker([f.latitude, f.longitude], { icon });
 
-    marker.bindPopup(buildPopup(f), { maxWidth: 240 });
+    marker.on("click", () => showFlightDetail(f.icao24));
     marker.addTo(map);
     planeMarkers.push(marker);
 
@@ -187,14 +194,9 @@ function setSourceBadge(state, text) {
 }
 
 
-/* ── Pan to plane (called by sidebar.js) ─────────────────────────────── */
+/* ── Navigate to flight detail (called by sidebar.js click) ──────────── */
 function focusFlight(icao24) {
-  const marker = planeMarkers.find(m => m._flightData?.icao24 === icao24);
-  if (!marker) return;
-
-  const latlng = marker.getLatLng();
-  map.flyTo(latlng, Math.max(map.getZoom(), 8), { duration: 0.8 });
-  marker.openPopup();
+  showFlightDetail(icao24);
 }
 
 
@@ -403,9 +405,196 @@ function deselectState() {
 }
 
 
+/* ── Flight detail panel ──────────────────────────────────────────────── */
+
+let fdpSelectedIcao24   = null;
+let fdpOriginMarker     = null;
+let fdpDestMarker       = null;
+let fdpSolidLine        = null;
+let fdpDashedLine       = null;
+let fdpRefreshInterval  = null;
+let fdpCountdownVal     = 10;
+let _fdpCachedOrigin    = null;
+let _fdpCachedDest      = null;
+let _fdpAirportsFetched = false;
+const FDP_REFRESH_SECS  = 10;
+
+function _fdpAirportIcon(type) {
+  return L.divIcon({
+    html:       `<div class="airport-marker airport-marker--${type}"></div>`,
+    iconSize:   [12, 12],
+    iconAnchor: [6, 6],
+    className:  "",
+  });
+}
+
+function _fdpSetText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function _fdpSetStatus(state, text) {
+  const el = document.getElementById("fdp-status");
+  if (!el) return;
+  el.className   = `source-badge source-badge--${state}`;
+  el.textContent = text;
+}
+
+function _fdpClearMapLayers() {
+  if (fdpOriginMarker) { map.removeLayer(fdpOriginMarker); fdpOriginMarker = null; }
+  if (fdpDestMarker)   { map.removeLayer(fdpDestMarker);   fdpDestMarker   = null; }
+  if (fdpSolidLine)    { map.removeLayer(fdpSolidLine);    fdpSolidLine    = null; }
+  if (fdpDashedLine)   { map.removeLayer(fdpDashedLine);   fdpDashedLine   = null; }
+}
+
+function _fdpRender(data) {
+  const pos = data.position;
+
+  _fdpSetText("fdp-callsign",  pos.callsign || pos.icao24 || "—");
+  _fdpSetText("fdp-icao24",    pos.icao24   || "—");
+  _fdpSetText("fdp-altitude",  pos.altitude_m  != null
+    ? Math.round(pos.altitude_m  * 3.28084).toLocaleString() : "—");
+  _fdpSetText("fdp-speed",     pos.velocity_ms != null
+    ? Math.round(pos.velocity_ms * 3.6).toLocaleString()     : "—");
+  _fdpSetText("fdp-heading",   pos.heading     != null
+    ? Math.round(pos.heading) + "°" : "—");
+  _fdpSetText("fdp-country",   pos.origin_country || "—");
+  _fdpSetText("fdp-timestamp", pos.fetched_at
+    ? new Date(pos.fetched_at).toLocaleTimeString() : "—");
+
+  if (!_fdpAirportsFetched) {
+    _fdpCachedOrigin    = data.origin;
+    _fdpCachedDest      = data.destination;
+    _fdpAirportsFetched = true;
+
+    const orig = _fdpCachedOrigin;
+    const dst  = _fdpCachedDest;
+    _fdpSetText("fdp-origin-name", orig ? (orig.name || orig.icao || "—") : "Unknown");
+    _fdpSetText("fdp-origin-icao", orig ? orig.icao : "—");
+    _fdpSetText("fdp-dest-name",   dst  ? (dst.name  || dst.icao  || "—") : "Unknown");
+    _fdpSetText("fdp-dest-icao",   dst  ? dst.icao  : "—");
+
+    if (orig && orig.lat != null) {
+      fdpOriginMarker = L.marker([orig.lat, orig.lon], { icon: _fdpAirportIcon("origin") })
+        .bindTooltip(`Origin: ${orig.city || orig.icao}`)
+        .addTo(map);
+    }
+    if (dst && dst.lat != null) {
+      fdpDestMarker = L.marker([dst.lat, dst.lon], { icon: _fdpAirportIcon("dest") })
+        .bindTooltip(`Dest: ${dst.city || dst.icao}`)
+        .addTo(map);
+    }
+
+    // Fit main map to show the full route on first selection
+    const pts = [];
+    if (orig && orig.lat != null) pts.push([orig.lat, orig.lon]);
+    pts.push([pos.latitude, pos.longitude]);
+    if (dst && dst.lat != null) pts.push([dst.lat, dst.lon]);
+    if (pts.length > 1) {
+      map.fitBounds(L.latLngBounds(pts), { padding: [40, 40] });
+    } else {
+      map.setView([pos.latitude, pos.longitude], 7);
+    }
+  }
+
+  // Redraw polylines on every refresh
+  if (fdpSolidLine)  { map.removeLayer(fdpSolidLine);  fdpSolidLine  = null; }
+  if (fdpDashedLine) { map.removeLayer(fdpDashedLine); fdpDashedLine = null; }
+
+  const cur = [pos.latitude, pos.longitude];
+  if (_fdpCachedOrigin && _fdpCachedOrigin.lat != null) {
+    fdpSolidLine = L.polyline([[_fdpCachedOrigin.lat, _fdpCachedOrigin.lon], cur], {
+      color: "#58a6ff", weight: 2, opacity: 0.7,
+    }).addTo(map);
+  }
+  if (_fdpCachedDest && _fdpCachedDest.lat != null) {
+    fdpDashedLine = L.polyline([cur, [_fdpCachedDest.lat, _fdpCachedDest.lon]], {
+      color: "#8b949e", weight: 2, opacity: 0.5, dashArray: "6 6",
+    }).addTo(map);
+  }
+
+  _fdpSetStatus("live", "Live");
+}
+
+async function _fdpRefresh() {
+  _fdpSetStatus("idle", "Fetching…");
+  try {
+    const res = await fetch(`/api/flight/${fdpSelectedIcao24}`);
+    if (res.status === 404) { _fdpSetStatus("error", "Not found"); return; }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    _fdpRender(data);
+  } catch (e) {
+    console.error("FDP fetch error:", e);
+    _fdpSetStatus("error", "Fetch failed");
+  }
+}
+
+async function showFlightDetail(icao24) {
+  // Stop any previous refresh
+  if (fdpRefreshInterval) { clearInterval(fdpRefreshInterval); fdpRefreshInterval = null; }
+
+  // Reset all FDP state
+  fdpSelectedIcao24   = icao24;
+  renderFlights(window.flightData);   // immediately repaint clicked marker orange
+  _fdpCachedOrigin    = null;
+  _fdpCachedDest      = null;
+  _fdpAirportsFetched = false;
+  fdpCountdownVal     = FDP_REFRESH_SECS;
+  _fdpClearMapLayers();
+
+  // Switch sidebar view
+  const overview = document.getElementById("sidebar-overview");
+  const detail   = document.getElementById("sidebar-flight-detail");
+  if (overview) overview.hidden = true;
+  if (detail)   detail.hidden   = false;
+
+  // Initial fetch
+  await _fdpRefresh();
+
+  // Start auto-refresh
+  fdpRefreshInterval = setInterval(async () => {
+    await _fdpRefresh();
+    fdpCountdownVal = FDP_REFRESH_SECS;
+  }, FDP_REFRESH_SECS * 1000);
+}
+
+function closeFlightDetail() {
+  if (fdpRefreshInterval) { clearInterval(fdpRefreshInterval); fdpRefreshInterval = null; }
+  _fdpClearMapLayers();
+  fdpSelectedIcao24   = null;
+  renderFlights(window.flightData);   // restore yellow on previously selected marker
+  _fdpCachedOrigin    = null;
+  _fdpCachedDest      = null;
+  _fdpAirportsFetched = false;
+
+  // Return to overview
+  const overview = document.getElementById("sidebar-overview");
+  const detail   = document.getElementById("sidebar-flight-detail");
+  if (overview) overview.hidden = false;
+  if (detail)   detail.hidden   = true;
+
+  // Remove flight list highlight
+  document.querySelectorAll(".flight-list__item--active").forEach(el =>
+    el.classList.remove("flight-list__item--active")
+  );
+}
+
+// Countdown ticker for FDP auto-refresh
+setInterval(() => {
+  if (fdpSelectedIcao24 === null) return;
+  fdpCountdownVal = Math.max(0, fdpCountdownVal - 1);
+  const el = document.getElementById("fdp-countdown");
+  if (el) el.textContent = fdpCountdownVal;
+}, 1000);
+
+
 /* ── ESC to deselect ──────────────────────────────────────────────────── */
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && selectedStateSlug !== null) deselectState();
+  if (e.key === "Escape") {
+    if (fdpSelectedIcao24 !== null) { closeFlightDetail(); return; }
+    if (selectedStateSlug !== null) deselectState();
+  }
 });
 
 
