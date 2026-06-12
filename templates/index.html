@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>India Flight Tracker</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+
+  <!-- ── Main layout ─────────────────────────────────────────────── -->
+  <div class="layout">
+
+    <!-- MAP (left / top on mobile) -->
+    <div class="map-wrap">
+      <div id="map"></div>
+    </div>
+
+    <!-- SIDEBAR (right / bottom on mobile) -->
+    <aside class="sidebar">
+
+      <!-- Header -->
+      <header class="sidebar__header">
+        <div class="sidebar__title">
+          <span class="sidebar__icon">✈</span>
+          <h1>India Flight Tracker</h1>
+        </div>
+        <div id="clock" class="sidebar__clock">--:--:--</div>
+      </header>
+
+      <!-- Stat cards -->
+      <section class="stats-grid" aria-label="Statistics">
+        <div class="stat-card">
+          <span class="stat-card__label">Active Flights</span>
+          <span class="stat-card__value" id="stat-active">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card__label">Avg Altitude</span>
+          <span class="stat-card__value" id="stat-altitude">—</span>
+          <span class="stat-card__unit">ft</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card__label">Avg Speed</span>
+          <span class="stat-card__value" id="stat-speed">—</span>
+          <span class="stat-card__unit">km/h</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card__label">Top Country</span>
+          <span class="stat-card__value stat-card__value--sm" id="stat-country">—</span>
+        </div>
+      </section>
+
+      <!-- Refresh controls -->
+      <div class="refresh-bar">
+        <button id="btn-refresh" class="btn btn--primary" onclick="manualRefresh()">
+          ↻ Refresh Now
+        </button>
+        <button id="btn-toggle" class="btn btn--ghost" onclick="toggleAutoRefresh()">
+          ⏸ Pause
+        </button>
+        <span class="refresh-bar__countdown">
+          Next in <strong id="countdown">{{ refresh }}</strong>s
+        </span>
+      </div>
+
+      <!-- Status badge -->
+      <div id="data-source" class="source-badge source-badge--idle">Initialising…</div>
+
+      <!-- Flight list -->
+      <div class="flight-list-wrap">
+        <div class="flight-list__header">
+          <span>Callsign</span>
+          <span>Country</span>
+          <span>Alt (ft)</span>
+          <span>Spd (km/h)</span>
+        </div>
+        <ul id="flight-list" class="flight-list" role="list">
+          <li class="flight-list__empty">Loading flights…</li>
+        </ul>
+      </div>
+
+    </aside>
+  </div>
+
+  <!-- App scripts -->
+  <script>
+    // Pass Flask config values to JS globals
+    const AUTO_REFRESH_SECONDS = {{ refresh }};
+  </script>
+  <script src="{{ url_for('static', filename='js/map.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+
+</body>
+</html>

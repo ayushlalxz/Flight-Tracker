@@ -1,0 +1,390 @@
+/* style.css — India Flight Tracker
+   Dark aviation theme with radar-green accents on a near-black base.
+   Uses CSS custom properties throughout for easy theming.
+*/
+
+/* ── Design tokens ─────────────────────────────────────────────────────── */
+:root {
+  /* Palette */
+  --color-bg:          #0d1117;
+  --color-surface:     #161b22;
+  --color-surface-2:   #1c2330;
+  --color-border:      #21262d;
+  --color-accent:      #58a6ff;       /* sky blue — primary interactive */
+  --color-accent-dim:  rgba(88,166,255,.12);
+  --color-radar:       #39d353;       /* radar-sweep green — live/status */
+  --color-warn:        #f0883e;
+  --color-text:        #e6edf3;
+  --color-text-muted:  #8b949e;
+  --color-text-dim:    #484f58;
+
+  /* Typography */
+  --font-display: 'Courier New', 'Courier', monospace;
+  --font-body:    -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-data:    'Courier New', monospace;
+
+  /* Spacing */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* Layout */
+  --sidebar-width:  320px;
+  --header-height:  56px;
+  --radius:         6px;
+  --radius-sm:      3px;
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Layout ────────────────────────────────────────────────────────────── */
+.layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.map-wrap {
+  flex: 1 1 auto;
+  position: relative;
+  min-width: 0;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Sidebar ────────────────────────────────────────────────────────────── */
+.sidebar {
+  flex: 0 0 var(--sidebar-width);
+  width: var(--sidebar-width);
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+.sidebar__header {
+  padding: var(--sp-4) var(--sp-4) var(--sp-3);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  flex-shrink: 0;
+}
+
+.sidebar__title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-1);
+}
+
+.sidebar__icon {
+  font-size: 18px;
+  color: var(--color-accent);
+  display: inline-block;
+  transform: rotate(-45deg);
+}
+
+.sidebar__title h1 {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.sidebar__clock {
+  font-family: var(--font-data);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: var(--color-text);
+  text-align: right;
+}
+
+/* ── Stat cards ────────────────────────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.stat-card {
+  background: var(--color-surface);
+  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: background .15s;
+}
+
+.stat-card:hover {
+  background: var(--color-surface-2);
+}
+
+.stat-card__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.stat-card__value {
+  font-family: var(--font-data);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-accent);
+  line-height: 1.1;
+}
+
+.stat-card__value--sm {
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.stat-card__unit {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-top: -2px;
+}
+
+/* ── Refresh bar ───────────────────────────────────────────────────────── */
+.refresh-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background .15s, color .15s, border-color .15s;
+  white-space: nowrap;
+}
+
+.btn--primary {
+  background: var(--color-accent);
+  color: #0d1117;
+  border-color: var(--color-accent);
+}
+.btn--primary:hover { background: #79beff; }
+
+.btn--ghost {
+  background: transparent;
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+.btn--ghost:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+.btn--ghost.paused { color: var(--color-radar); border-color: var(--color-radar); }
+
+.refresh-bar__countdown {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-left: auto;
+}
+.refresh-bar__countdown strong { color: var(--color-text); }
+
+/* ── Source badge ──────────────────────────────────────────────────────── */
+.source-badge {
+  margin: 0 var(--sp-4) var(--sp-2);
+  padding: 3px var(--sp-2);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  display: inline-block;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.source-badge--idle    { background: var(--color-surface-2); color: var(--color-text-muted); }
+.source-badge--live    { background: rgba(57,211,83,.15);     color: var(--color-radar); }
+.source-badge--cached  { background: rgba(240,136,62,.15);    color: var(--color-warn); }
+.source-badge--error   { background: rgba(248,81,73,.15);     color: #f85149; }
+
+/* ── Flight list ───────────────────────────────────────────────────────── */
+.flight-list-wrap {
+  flex: 1 1 auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.flight-list__header {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1.5fr 1.5fr;
+  padding: var(--sp-2) var(--sp-4);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.flight-list {
+  list-style: none;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+.flight-list::-webkit-scrollbar { width: 4px; }
+.flight-list::-webkit-scrollbar-track { background: transparent; }
+.flight-list::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+.flight-list::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+
+.flight-list__item {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1.5fr 1.5fr;
+  padding: var(--sp-2) var(--sp-4);
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+  transition: background .12s;
+  align-items: center;
+}
+
+.flight-list__item:hover,
+.flight-list__item--active {
+  background: var(--color-accent-dim);
+}
+
+.flight-list__callsign {
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flight-list__country {
+  font-size: 11px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flight-list__alt,
+.flight-list__spd {
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.flight-list__empty {
+  padding: var(--sp-5) var(--sp-4);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ── Leaflet popup overrides ───────────────────────────────────────────── */
+.leaflet-popup-content-wrapper {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,.6);
+}
+
+.leaflet-popup-tip {
+  background: var(--color-surface-2);
+}
+
+.leaflet-popup-close-button {
+  color: var(--color-text-muted) !important;
+}
+
+.popup__callsign {
+  font-family: var(--font-data);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-accent);
+  margin-bottom: var(--sp-2);
+}
+
+.popup__grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px var(--sp-3);
+  font-size: 12px;
+}
+
+.popup__key   { color: var(--color-text-muted); }
+.popup__val   { color: var(--color-text); font-family: var(--font-data); }
+.popup__ground { color: var(--color-warn); font-size: 10px; font-weight: 700;
+                 text-transform: uppercase; letter-spacing: .06em; margin-top: var(--sp-1); }
+
+/* ── Plane markers ─────────────────────────────────────────────────────── */
+.plane-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.plane-marker svg {
+  filter: drop-shadow(0 0 3px rgba(88,166,255,.6));
+  transition: filter .2s;
+}
+
+/* ── Mobile responsive ─────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .map-wrap {
+    flex: 0 0 55vh;
+    height: 55vh;
+  }
+
+  .sidebar {
+    flex: 1 1 auto;
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .sidebar__clock { font-size: 17px; }
+  .stat-card__value { font-size: 18px; }
+}
