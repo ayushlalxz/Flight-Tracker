@@ -34,6 +34,9 @@
         <div id="clock" class="sidebar__clock">--:--:--</div>
       </header>
 
+      <!-- Region label (hidden when no state selected) -->
+      <div id="region-label" class="region-label" aria-live="polite"></div>
+
       <!-- Stat cards -->
       <section class="stats-grid" aria-label="Statistics">
         <div class="stat-card">
@@ -63,6 +66,9 @@
         </button>
         <button id="btn-toggle" class="btn btn--ghost" onclick="toggleAutoRefresh()">
           ⏸ Pause
+        </button>
+        <button id="btn-back" class="btn btn--state-back" onclick="deselectState()" hidden>
+          ← India
         </button>
         <span class="refresh-bar__countdown">
           Next in <strong id="countdown">{{ refresh }}</strong>s

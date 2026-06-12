@@ -9,21 +9,12 @@ from datetime import date
 import mysql.connector
 from flask import Blueprint, jsonify
 
+from api.helpers import get_connection
 import config
 
 logger = logging.getLogger(__name__)
 
 stats_bp = Blueprint("stats", __name__)
-
-
-def _get_connection():
-    """Open and return a new MySQL connection using config credentials."""
-    return mysql.connector.connect(
-        host=config.DB_HOST,
-        user=config.DB_USER,
-        password=config.DB_PASSWORD,
-        database=config.DB_NAME,
-    )
 
 
 @stats_bp.route("/api/stats")
@@ -70,7 +61,7 @@ def get_stats():
     }
 
     try:
-        conn = _get_connection()
+        conn = get_connection()
         cursor = conn.cursor()
 
         cursor.execute(sql_total, (today,))

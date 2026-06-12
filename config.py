@@ -22,7 +22,7 @@ INDIA_BBOX = {
 }
 
 # ── Frontend auto-refresh ──────────────────────────────────────────────────
-AUTO_REFRESH_SECONDS = 60
+AUTO_REFRESH_SECONDS = 1
 
 # ── Flask ──────────────────────────────────────────────────────────────────
 DEBUG = True

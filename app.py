@@ -4,6 +4,7 @@ from flask import Flask, render_template
 from flask_cors import CORS
 
 from api.flights import flights_bp
+from api.state_flights import state_flights_bp
 from api.stats import stats_bp
 import config
 
@@ -12,6 +13,7 @@ CORS(app)
 
 # Register API blueprints
 app.register_blueprint(flights_bp)
+app.register_blueprint(state_flights_bp)
 app.register_blueprint(stats_bp)
 
 

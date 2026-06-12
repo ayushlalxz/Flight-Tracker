@@ -1,22 +1,16 @@
 /**
- * map.js — Leaflet map initialisation and flight marker management
- *
- * Responsibilities:
- *  - Initialise the map centred on India with a dark tile layer
- *  - Render plane markers (SVG, rotated to heading) for each flight
- *  - Fetch /api/flights, store result in window.flightData, call sidebar
- *  - Auto-refresh on a configurable interval (AUTO_REFRESH_SECONDS from template)
+ * map.js — Leaflet map initialisation, flight marker management,
+ *           and interactive state-selection layer.
  */
 
 /* ── Map init ─────────────────────────────────────────────────────────── */
 const map = L.map("map", {
-  center: [20.5937, 78.9629],   // geographic centre of India
+  center: [20.5937, 78.9629],
   zoom: 5,
   zoomControl: true,
   attributionControl: true,
 });
 
-// CartoDB Dark Matter — no API key required
 L.tileLayer(
   "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
   {
@@ -28,11 +22,12 @@ L.tileLayer(
   }
 ).addTo(map);
 
-/* ── State ────────────────────────────────────────────────────────────── */
-/** @type {L.Marker[]} — current set of plane markers on the map */
+
+/* ── Flight state ─────────────────────────────────────────────────────── */
+/** @type {L.Marker[]} */
 let planeMarkers = [];
 
-/** @type {number|null} — setInterval handle for auto-refresh */
+/** @type {number|null} */
 let refreshInterval = null;
 
 /** @type {boolean} */
@@ -42,18 +37,37 @@ let autoRefreshEnabled = true;
 window.flightData = [];
 
 
-/* ── SVG plane icon ───────────────────────────────────────────────────── */
-/**
- * Build an L.DivIcon containing an SVG plane rotated to the given heading.
- * @param {number} heading — true track in degrees (0=N, 90=E …)
- * @param {boolean} onGround
- * @returns {L.DivIcon}
- */
-function makePlaneIcon(heading, onGround) {
-  const color  = onGround ? "#f0883e" : "#58a6ff";
-  const size   = onGround ? 14 : 18;
+/* ── State-selection state ────────────────────────────────────────────── */
+/** @type {L.GeoJSON|null} */
+let stateLayer = null;
 
-  // Simple arrow/plane shape — points upward (north = 0°)
+/** @type {Object|null} GeoJSON feature of the currently selected state */
+let selectedState = null;
+
+/** @type {string|null} slug of the currently selected state, e.g. "tamil-nadu" */
+let selectedStateSlug = null;
+
+/** @type {AbortController|null} lets us cancel in-flight fetches on rapid clicks */
+let fetchAbortController = null;
+
+
+/* ── Slug helper ──────────────────────────────────────────────────────── */
+/**
+ * Convert a NAME_1 state name to a URL slug.
+ * Must match Python _name_to_slug() in api/state_flights.py exactly.
+ * @param {string} name
+ * @returns {string}
+ */
+function nameToSlug(name) {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+
+/* ── SVG plane icon ───────────────────────────────────────────────────── */
+function makePlaneIcon(heading, onGround) {
+  const color = onGround ? "#f0883e" : "#58a6ff";
+  const size  = onGround ? 14 : 18;
+
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg"
          width="${size}" height="${size}"
@@ -70,21 +84,16 @@ function makePlaneIcon(heading, onGround) {
     html: `<div class="plane-marker">${svg}</div>`,
     iconSize:   [size, size],
     iconAnchor: [size / 2, size / 2],
-    className:  "",  // disable leaflet-div-icon default white box
+    className:  "",
   });
 }
 
 
 /* ── Popup content ────────────────────────────────────────────────────── */
-/**
- * Build HTML for a Leaflet popup given a flight object.
- * @param {Object} f — flight data object from the API
- * @returns {string} HTML string
- */
 function buildPopup(f) {
-  const altFt  = f.altitude_m != null ? Math.round(f.altitude_m * 3.28084).toLocaleString() : "—";
-  const spdKmh = f.velocity_ms != null ? Math.round(f.velocity_ms * 3.6).toLocaleString() : "—";
-  const hdg    = f.heading != null ? `${Math.round(f.heading)}°` : "—";
+  const altFt  = f.altitude_m  != null ? Math.round(f.altitude_m * 3.28084).toLocaleString() : "—";
+  const spdKmh = f.velocity_ms != null ? Math.round(f.velocity_ms * 3.6).toLocaleString()   : "—";
+  const hdg    = f.heading     != null ? `${Math.round(f.heading)}°` : "—";
 
   return `
     <div class="popup__callsign">${f.callsign || f.icao24 || "Unknown"}</div>
@@ -105,12 +114,7 @@ function buildPopup(f) {
 
 
 /* ── Render flights ───────────────────────────────────────────────────── */
-/**
- * Clear existing markers and re-draw all flights on the map.
- * @param {Object[]} flights — array of flight objects from /api/flights
- */
 function renderFlights(flights) {
-  // Remove old markers
   planeMarkers.forEach(m => map.removeLayer(m));
   planeMarkers = [];
 
@@ -124,7 +128,6 @@ function renderFlights(flights) {
     marker.addTo(map);
     planeMarkers.push(marker);
 
-    // Expose a programmatic focus method so sidebar rows can fly to plane
     marker._flightData = f;
   });
 }
@@ -132,23 +135,34 @@ function renderFlights(flights) {
 
 /* ── API fetch ────────────────────────────────────────────────────────── */
 /**
- * Fetch /api/flights, update window.flightData, re-render markers,
- * and notify sidebar.js.
+ * Fetch flights from the appropriate endpoint (state-specific or all-India),
+ * re-render markers, and notify sidebar.js.
+ * @param {AbortSignal|null} abortSignal
  */
-async function fetchAndRender() {
+async function fetchAndRender(abortSignal = null) {
   setSourceBadge("idle", "Fetching…");
 
+  const url = selectedStateSlug
+    ? `/api/flights/${selectedStateSlug}`
+    : "/api/flights";
+
   try {
-    const res  = await fetch("/api/flights");
+    const fetchOptions = abortSignal ? { signal: abortSignal } : {};
+    const res  = await fetch(url, fetchOptions);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
 
     window.flightData = json.flights || [];
     renderFlights(window.flightData);
 
-    // Notify sidebar (defined in sidebar.js)
-    if (typeof updateStats     === "function") updateStats(window.flightData);
+    if (typeof updateStats      === "function") updateStats(window.flightData);
     if (typeof updateFlightList === "function") updateFlightList(window.flightData);
+
+    // Keep region label in sync (set by onStateClick, cleared by deselectState)
+    const regionEl = document.getElementById("region-label");
+    if (regionEl && json.state) {
+      regionEl.textContent = `Region: ${json.state}`;
+    }
 
     const label = json.source === "cached" ? "cached" : "live";
     const text  = json.source === "cached"
@@ -157,6 +171,7 @@ async function fetchAndRender() {
     setSourceBadge(label, text);
 
   } catch (err) {
+    if (err.name === "AbortError") return;   // intentional cancel — ignore silently
     console.error("fetchAndRender error:", err);
     setSourceBadge("error", "Fetch failed");
   }
@@ -164,11 +179,6 @@ async function fetchAndRender() {
 
 
 /* ── Source badge helper ──────────────────────────────────────────────── */
-/**
- * Update the data-source badge in the sidebar.
- * @param {"idle"|"live"|"cached"|"error"} state
- * @param {string} text
- */
 function setSourceBadge(state, text) {
   const el = document.getElementById("data-source");
   if (!el) return;
@@ -178,10 +188,6 @@ function setSourceBadge(state, text) {
 
 
 /* ── Pan to plane (called by sidebar.js) ─────────────────────────────── */
-/**
- * Pan and zoom the map to a specific flight by ICAO24.
- * @param {string} icao24
- */
 function focusFlight(icao24) {
   const marker = planeMarkers.find(m => m._flightData?.icao24 === icao24);
   if (!marker) return;
@@ -193,13 +199,14 @@ function focusFlight(icao24) {
 
 
 /* ── Auto-refresh ─────────────────────────────────────────────────────── */
-/** Start (or restart) the countdown and setInterval. */
 function startAutoRefresh() {
   stopAutoRefresh();
   autoRefreshEnabled = true;
   resetCountdown();
   refreshInterval = setInterval(() => {
-    fetchAndRender();
+    if (fetchAbortController) fetchAbortController.abort();
+    fetchAbortController = new AbortController();
+    fetchAndRender(fetchAbortController.signal);
     resetCountdown();
   }, AUTO_REFRESH_SECONDS * 1000);
 }
@@ -211,7 +218,6 @@ function stopAutoRefresh() {
   }
 }
 
-/** Exposed to index.html toggle button */
 function toggleAutoRefresh() {
   autoRefreshEnabled = !autoRefreshEnabled;
   const btn = document.getElementById("btn-toggle");
@@ -225,9 +231,10 @@ function toggleAutoRefresh() {
   }
 }
 
-/** Exposed to index.html manual-refresh button */
 function manualRefresh() {
-  fetchAndRender();
+  if (fetchAbortController) fetchAbortController.abort();
+  fetchAbortController = new AbortController();
+  fetchAndRender(fetchAbortController.signal);
   if (autoRefreshEnabled) resetCountdown();
 }
 
@@ -249,6 +256,160 @@ setInterval(() => {
 }, 1000);
 
 
+/* ── State GeoJSON layer ──────────────────────────────────────────────── */
+
+const STATE_STYLE_DEFAULT = {
+  color:       "#3a3f4b",
+  weight:      1,
+  opacity:     0.6,
+  fillColor:   "#ffffff",
+  fillOpacity: 0.02,
+};
+
+const STATE_STYLE_HOVER = {
+  color:   "#F5F0E8",
+  weight:  3,
+  opacity: 1,
+};
+
+const STATE_STYLE_SELECTED = {
+  color:       "#F5F0E8",
+  weight:      3,
+  opacity:     1,
+  fillColor:   "#F5F0E8",
+  fillOpacity: 0.06,
+};
+
+/**
+ * Load india-states.geojson and attach hover/click handlers to each feature.
+ * Fails gracefully — map continues in all-India mode if the file is missing.
+ */
+function initStateLayer() {
+  fetch("/static/geo/india-states.geojson")
+    .then(r => {
+      if (!r.ok) throw new Error(`GeoJSON fetch failed: HTTP ${r.status}`);
+      return r.json();
+    })
+    .then(geojson => {
+      stateLayer = L.geoJSON(geojson, {
+        style: STATE_STYLE_DEFAULT,
+        onEachFeature(feature, layer) {
+          layer.on({
+            mouseover: onStateHover,
+            mouseout:  onStateLeave,
+            click:     onStateClick,
+          });
+        },
+      }).addTo(map);
+
+      stateLayer.bringToBack();
+    })
+    .catch(err => console.warn("State layer disabled:", err));
+}
+
+function onStateHover(e) {
+  const layer = e.target;
+  // When a state is selected, freeze interaction on all other states
+  if (selectedStateSlug !== null && layer.feature !== selectedState) return;
+  if (layer.feature === selectedState) return;
+  layer.setStyle(STATE_STYLE_HOVER);
+  layer.bringToFront();
+}
+
+function onStateLeave(e) {
+  const layer = e.target;
+  if (layer.feature === selectedState) return;
+  // No hover reset needed for non-selected states while a state is locked
+  if (selectedStateSlug !== null) return;
+  stateLayer.resetStyle(layer);
+}
+
+function onStateClick(e) {
+  if (!stateLayer) return;
+  const layer   = e.target;
+  const feature = layer.feature;
+  const name    = feature.properties.NAME_1;
+  const slug    = nameToSlug(name);
+
+  // When a state is selected, clicking other states does nothing
+  if (selectedStateSlug !== null && slug !== selectedStateSlug) return;
+
+  // Clicking the already-selected state deselects
+  if (slug === selectedStateSlug) {
+    deselectState();
+    return;
+  }
+
+  // Cancel any in-flight request
+  if (fetchAbortController) fetchAbortController.abort();
+  fetchAbortController = new AbortController();
+
+  // Reset previous selection's style
+  if (selectedState) {
+    stateLayer.eachLayer(l => {
+      if (l.feature === selectedState) stateLayer.resetStyle(l);
+    });
+  }
+
+  // Lock new selection
+  selectedState     = feature;
+  selectedStateSlug = slug;
+  layer.setStyle(STATE_STYLE_SELECTED);
+  layer.bringToFront();
+
+  // Zoom to fit the state
+  map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+
+  // Show Back button and update region label immediately
+  const backBtn  = document.getElementById("btn-back");
+  const regionEl = document.getElementById("region-label");
+  if (backBtn)  backBtn.hidden     = false;
+  if (regionEl) regionEl.textContent = `Region: ${name}`;
+
+  // Fetch state flights
+  fetchAndRender(fetchAbortController.signal);
+  if (autoRefreshEnabled) resetCountdown();
+}
+
+/**
+ * Clear the state selection and return to the all-India view.
+ * Called by the "← India" button, ESC key, or re-clicking the active state.
+ */
+function deselectState() {
+  if (fetchAbortController) {
+    fetchAbortController.abort();
+    fetchAbortController = null;
+  }
+
+  // Restore selected layer's style
+  if (selectedState && stateLayer) {
+    stateLayer.eachLayer(l => {
+      if (l.feature === selectedState) stateLayer.resetStyle(l);
+    });
+  }
+
+  selectedState     = null;
+  selectedStateSlug = null;
+
+  const backBtn  = document.getElementById("btn-back");
+  const regionEl = document.getElementById("region-label");
+  if (backBtn)  backBtn.hidden     = true;
+  if (regionEl) regionEl.textContent = "";
+
+  map.flyTo([20.5937, 78.9629], 5, { duration: 0.8 });
+
+  fetchAndRender();
+  if (autoRefreshEnabled) resetCountdown();
+}
+
+
+/* ── ESC to deselect ──────────────────────────────────────────────────── */
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && selectedStateSlug !== null) deselectState();
+});
+
+
 /* ── Bootstrap ────────────────────────────────────────────────────────── */
+initStateLayer();
 fetchAndRender();
 startAutoRefresh();

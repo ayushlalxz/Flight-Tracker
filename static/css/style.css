@@ -367,6 +367,45 @@ html, body {
   transition: filter .2s;
 }
 
+/* ── State polygon layer ───────────────────────────────────────────────── */
+.leaflet-overlay-pane path.leaflet-interactive {
+  cursor: pointer;
+  transition: stroke .15s, stroke-width .15s, fill-opacity .15s;
+}
+
+/* ── Region label ──────────────────────────────────────────────────────── */
+.region-label {
+  padding: var(--sp-2) var(--sp-4);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #F5F0E8;
+  background: rgba(245,240,232,.08);
+  border-bottom: 1px solid rgba(245,240,232,.15);
+  flex-shrink: 0;
+}
+
+.region-label:empty {
+  padding: 0;
+  border-bottom: none;
+}
+
+/* ── Back-to-India button ──────────────────────────────────────────────── */
+.btn--state-back {
+  background: transparent;
+  color: #F5F0E8;
+  border-color: rgba(245,240,232,.4);
+  font-family: var(--font-display);
+  letter-spacing: .04em;
+}
+
+.btn--state-back:hover {
+  background: rgba(245,240,232,.1);
+  border-color: #F5F0E8;
+}
+
 /* ── Mobile responsive ─────────────────────────────────────────────────── */
 @media (max-width: 700px) {
   .layout {
